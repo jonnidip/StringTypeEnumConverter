@@ -17,6 +17,8 @@ namespace Jonnidip
         {
             switch (reader.TokenType)
             {
+                case JsonToken.Null:
+                    return null;
                 case JsonToken.String:
                     {
                         var typeValue = ((string)reader.Value ?? string.Empty).Split('.');
@@ -32,9 +34,13 @@ namespace Jonnidip
 
                         return base.ReadJson(newReader, newType, existingValue, serializer);
                     }
-                default:
-                    return base.ReadJson(reader, objectType, existingValue, serializer);
+                case JsonToken.Integer:
+                    if (objectType.Name == "Enum")
+                        throw new Exception($"Value {reader.Value} cannot be converted to {objectType.Name}.");
+                    break;
             }
+
+            return base.ReadJson(reader, objectType, existingValue, serializer);
         }
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
@@ -49,8 +55,8 @@ namespace Jonnidip
 
             CheckLiteral(objectType, value.ToString());
 
-            var enumType = EnumTypeBuilder.CreateType(objectType.Name, 
-                                                        objectType.GetEnumUnderlyingType(), 
+            var enumType = EnumTypeBuilder.CreateType(objectType.Name,
+                                                        objectType.GetEnumUnderlyingType(),
                                                         $"{objectType.Name}.{value}", value);
             base.WriteJson(writer, Enum.GetValues(enumType).GetValue(0), serializer);
         }
