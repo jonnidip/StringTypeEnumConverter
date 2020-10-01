@@ -33,7 +33,7 @@ echo **********************************************************
 echo.
 echo.
 echo Creating nuget package using nuget.exe...
-.nuget\nuget pack "StringTypeEnumConverter\StringTypeEnumConverter.csproj" -IncludeReferencedProjects -OutputDirectory "StringTypeEnumConverter\bin\nuget\\" -properties Configuration=Release
+.nuget\nuget pack "StringTypeEnumConverter.nuspec" -IncludeReferencedProjects -OutputDirectory "StringTypeEnumConverter\bin\nuget\\" -properties Configuration=Release
 echo.
 echo.
 echo.
