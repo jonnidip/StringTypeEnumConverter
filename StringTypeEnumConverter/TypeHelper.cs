@@ -9,7 +9,7 @@ namespace Jonnidip
     {
         private static readonly Dictionary<string, Type> TypeCache = new Dictionary<string, Type>();
 
-        public static Type FindType(string typeName, Assembly[] assemblies, bool searchInReferencedAssemblies = false)
+        public static Type FindType(string typeName, IEnumerable<Assembly> assemblies, bool searchInReferencedAssemblies = false)
         {
             if (TypeCache.ContainsKey(typeName))
                 return TypeCache[typeName];
@@ -38,7 +38,7 @@ namespace Jonnidip
 
             throw new Exception($"Cannot find type {typeName}");
         }
-        
+
         public static Type FindType(string typeName, Assembly assembly)
         {
             var cacheKey = $"{assembly.FullName}.{typeName}";

@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -9,9 +10,9 @@ namespace Jonnidip
 {
     public class StringTypeEnumConverter : StringEnumConverter
     {
-        private readonly Assembly[] _assemblies;
+        private readonly IEnumerable<Assembly> _assemblies;
 
-        public StringTypeEnumConverter(Assembly[] assemblies) => _assemblies = assemblies;
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) => _assemblies = assemblies;
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
