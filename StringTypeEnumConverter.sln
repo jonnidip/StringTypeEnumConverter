@@ -7,6 +7,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StringTypeEnumConverter", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StringTypeEnumConverterTests", "StringTypeEnumConverterTests\StringTypeEnumConverterTests.csproj", "{17B832C0-7A31-42F1-9179-5B0EE5E6D371}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2782AD81-6061-4970-8269-D0529377A1DF}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		Pack.bat = Pack.bat
+		README.md = README.md
+		StringTypeEnumConverter.nuspec = StringTypeEnumConverter.nuspec
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
