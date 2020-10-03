@@ -2,18 +2,21 @@
 <package >
   <metadata>
     <id>StringTypeEnumConverter.Newtonsoft</id>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <authors>Giovanni Dipino</authors>
     <owners>Giovanni Dipino</owners>
-	<license type="file">LICENSE</license>
+	<license type="expression">MIT</license>
     <projectUrl>https://github.com/jonnidip/StringTypeEnumConverter</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>An enum converter for Newtonsoft json.</description>
-    <releaseNotes>Summary of changes made in this release of the package.</releaseNotes>
+    <description>A more precise enum converter for Newtonsoft json.</description>
+    <releaseNotes>First working version.</releaseNotes>
     <copyright>Copyright 2020 Giovanni Dipino</copyright>
     <tags>json newtonsoft enum enumtypeconverter</tags>
     <dependencies>
       <dependency id="Newtonsoft.Json" version="12.0.3" />
-    </dependencies>
+    </dependencies>	
   </metadata>
+      <files>
+        <file src="StringTypeEnumConverter\bin\Release\StringTypeEnumConverter.dll" target="lib" />
+    </files>
 </package>
