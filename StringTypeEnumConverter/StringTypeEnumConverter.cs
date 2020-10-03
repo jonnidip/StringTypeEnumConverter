@@ -12,6 +12,8 @@ namespace Jonnidip
     {
         private readonly IEnumerable<Assembly> _assemblies;
 
+        public StringTypeEnumConverter() : this(AppDomain.CurrentDomain.GetAssemblies()) { }
+
         public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) => _assemblies = assemblies;
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -33,11 +35,13 @@ namespace Jonnidip
 
                         var newType = TypeHelper.FindType(newTypeName, _assemblies, true);
 
+                        CheckLiteral(newType, newValue);
+
                         return base.ReadJson(newReader, newType, existingValue, serializer);
                     }
                 case JsonToken.Integer:
                     if (objectType.Name == "Enum")
-                        throw new Exception($"Value {reader.Value} cannot be converted to {objectType.Name}.");
+                        throw new Exception($"Value '{reader.Value}' cannot be converted to type: {objectType.Name}.");
                     break;
             }
 
@@ -65,7 +69,7 @@ namespace Jonnidip
         private static void CheckLiteral(Type type, string literalName)
         {
             if (!type.GetEnumNames().Contains(literalName))
-                throw new Exception($"Value {literalName} is not part of enum: {type}");
+                throw new Exception($"Value '{literalName}' is not part of enum: {type}");
         }
 
         public override bool CanConvert(Type objectType)

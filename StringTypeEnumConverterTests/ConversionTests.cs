@@ -88,7 +88,7 @@ namespace StringTypeEnumConverterTests
         [MemberData(nameof(SerializeData))]
         public void JsonConvert_SerializeObject_ReturnsExpectedValue(string expectedValue, TestClass testClass)
         {
-            var serialized = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies()));
+            var serialized = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter());
 
             Assert.Equal(expectedValue, serialized);
         }
@@ -98,7 +98,7 @@ namespace StringTypeEnumConverterTests
         [MemberData(nameof(DeserializeData))]
         public void JsonConvert_DeserializeObject_ReturnsExpectedValue(string serializedValue, TestClass result)
         {
-            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies()));
+            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter());
 
             result.Should().BeEquivalentTo(deserialized);
         }
@@ -108,8 +108,8 @@ namespace StringTypeEnumConverterTests
         {
             const string serializedValue = "{\"Enum1\":5,\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
 
-            var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies())));
-            Assert.Equal("Value 5 cannot be converted to Enum.", exception.Message);
+            var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter()));
+            Assert.Equal("Value '5' cannot be converted to type: Enum.", exception.Message);
         }
 
         [Theory]
@@ -117,16 +117,16 @@ namespace StringTypeEnumConverterTests
         [InlineData("{\"Enum1\":\"StringComparison.NonExisting\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}")]
         public void JsonConvert_DeserializeObject_ThrowsException_If_LiteralDoesNotBelongToEnum(string serializedValue)
         {
-            var exception = Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies())));
-            Assert.StartsWith("Error converting value \"NonExisting\" to type", exception.Message);
+            var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter()));
+            Assert.StartsWith("Value 'NonExisting' is not part of enum:", exception.Message);
         }
 
         [Fact]
         public void JsonConvert_DeserializeObject_ThrowsException_If_TypeNotFound()
         {
             const string serializedValue = "{\"Enum1\":\"NonExisting.Value\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
-            var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies())));
-            Assert.Equal("Cannot find type NonExisting", exception.Message);
+            var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter()));
+            Assert.Equal("Cannot find type 'NonExisting'", exception.Message);
         }
 
         [Fact]
@@ -140,11 +140,11 @@ namespace StringTypeEnumConverterTests
             Assert.Empty(value);
 
             const string serialized = "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
-            JsonConvert.DeserializeObject<TestClass>(serialized, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies()));
+            JsonConvert.DeserializeObject<TestClass>(serialized, new StringTypeEnumConverter());
 
             Assert.True(value.ContainsValue(typeof(StringComparison)));
 
-            JsonConvert.DeserializeObject<TestClass>(serialized, new StringTypeEnumConverter(AppDomain.CurrentDomain.GetAssemblies()));
+            JsonConvert.DeserializeObject<TestClass>(serialized, new StringTypeEnumConverter());
             //TODO: Check if value is being read from TypeCache.
         }
 

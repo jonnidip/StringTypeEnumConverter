@@ -36,7 +36,7 @@ namespace Jonnidip
                     }
             }
 
-            throw new Exception($"Cannot find type {typeName}");
+            throw new Exception($"Cannot find type '{typeName}'");
         }
 
         public static Type FindType(string typeName, Assembly assembly)
