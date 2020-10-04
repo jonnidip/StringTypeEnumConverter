@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using FluentAssertions;
+﻿using FluentAssertions;
 using Jonnidip;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Xunit;
 
 namespace StringTypeEnumConverterTests

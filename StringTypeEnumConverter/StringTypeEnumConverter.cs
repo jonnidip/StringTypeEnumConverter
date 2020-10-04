@@ -24,20 +24,9 @@ namespace Jonnidip
                     return null;
                 case JsonToken.String:
                     {
-                        var typeValue = ((string)reader.Value ?? string.Empty).Split('.');
+                        GetObjectType(ref reader, ref objectType);
 
-                        var newTypeName = typeValue[0];
-                        var newValue = typeValue[1];
-
-                        var newReader = new JsonTextReader(new StringReader($"{{'{newTypeName}': '{newValue}'}}"));
-                        while (newReader.Read() && newReader.TokenType != JsonToken.String)
-                        { }
-
-                        var newType = TypeHelper.FindType(newTypeName, _assemblies, true);
-
-                        CheckLiteral(newType, newValue);
-
-                        return base.ReadJson(newReader, newType, existingValue, serializer);
+                        return base.ReadJson(reader, objectType, existingValue, serializer);
                     }
                 case JsonToken.Integer:
                     if (objectType.Name == "Enum")
@@ -68,15 +57,65 @@ namespace Jonnidip
 
         private static void CheckLiteral(Type type, string literalName)
         {
+            if (!type.IsEnum)
+                throw new Exception($"Type '{type.Name}' is not an Enum");
+
             if (!type.GetEnumNames().Contains(literalName))
                 throw new Exception($"Value '{literalName}' is not part of enum: {type}");
         }
 
-        public override bool CanConvert(Type objectType)
+        private void GetObjectType(ref JsonReader reader, ref Type objectType)
         {
-            var t = objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Nullable<>)
+            var readerValue = (string)reader.Value;
+
+            if (GetTypeValueString(readerValue, out var typeName, out var value))
+            {
+                var t = GetTypeDefinition(objectType);
+
+                if (t.Name == "Enum")
+                {
+                    objectType = TypeHelper.FindType(typeName, _assemblies, true);
+                    CheckLiteral(objectType, value);
+                }
+                else
+                    CheckLiteral(t, value);
+
+                reader = new JsonTextReader(new StringReader($"{{'{typeName}': '{value}'}}"));
+                while (reader.Read() && reader.TokenType != JsonToken.String)
+                { }
+
+                return;
+            }
+
+            throw new Exception($"Cannot infer type name from string value '{readerValue}'");
+        }
+
+        private static bool GetTypeValueString(string readerValue, out string typeName, out string value)
+        {
+            typeName = string.Empty;
+            value = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(readerValue)
+                && readerValue.Contains("."))
+            {
+                var typeValue = readerValue.Split('.');
+                typeName = typeValue[0];
+                value = typeValue[1];
+                
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Type GetTypeDefinition(Type objectType) 
+            => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Nullable<>)
                 ? Nullable.GetUnderlyingType(objectType)
                 : objectType;
+
+        public override bool CanConvert(Type objectType)
+        {
+            var t = GetTypeDefinition(objectType);
 
             return t != null && (t.Name == "Enum" || t.IsEnum);
         }
