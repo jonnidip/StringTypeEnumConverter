@@ -15,7 +15,7 @@ namespace Jonnidip
 
         public StringTypeEnumConverter() : this(AppDomain.CurrentDomain.GetAssemblies()) { }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) : this(assemblies, StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly) { }
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) : this(assemblies, StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue) { }
 
         public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior) : this(AppDomain.CurrentDomain.GetAssemblies(), behavior) { }
 
