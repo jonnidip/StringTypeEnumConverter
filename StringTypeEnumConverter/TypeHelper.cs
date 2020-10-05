@@ -51,5 +51,19 @@ namespace Jonnidip
 
             return type;
         }
+
+        public static Type GetTypeDefinition(Type objectType)
+            => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Nullable<>)
+                ? Nullable.GetUnderlyingType(objectType)
+                : objectType;
+
+        public static void CheckEnumLiteral(Type type, string literalName)
+        {
+            if (!type.IsEnum)
+                throw new Exception($"Type '{type.Name}' is not an Enum");
+
+            if (!type.GetEnumNames().Contains(literalName))
+                throw new Exception($"Value '{literalName}' is not part of enum: {type}");
+        }
     }
 }

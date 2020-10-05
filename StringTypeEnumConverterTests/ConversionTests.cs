@@ -83,6 +83,29 @@ namespace StringTypeEnumConverterTests
                    }
                };
 
+        public static IEnumerable<object[]> DeserializeDataStrictEnumOnlyBehavior
+            => new List<object[]>
+               {
+                   new object[]
+                   {
+                       "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"None\",\"SubClass\":null}", new TestClass
+                                                                                                                                     {
+                                                                                                                                         Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                                                         Enum2 = StringSplitOptions.None,
+                                                                                                                                         SubClass = null
+                                                                                                                                     }
+                   },
+                   new object[]
+                   {
+                       "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":0,\"SubClass\":null}", new TestClass
+                                                                                                           {
+                                                                                                               Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                               Enum2 = StringSplitOptions.None,
+                                                                                                               SubClass = null
+                                                                                                           }
+                   }
+               };
+
         [Theory]
         [MemberData(nameof(CommonData))]
         [MemberData(nameof(SerializeData))]
@@ -93,12 +116,34 @@ namespace StringTypeEnumConverterTests
             Assert.Equal(expectedValue, serialized);
         }
 
+        [Fact]
+        public void x()
+        {
+            var testClass = new TestClass
+                            {
+                                Enum1 = StringComparison.OrdinalIgnoreCase,
+                                Enum2 = null,
+                                SubClass = null
+                            };
+
+            var serialized = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly));
+        }
+
         [Theory]
         [MemberData(nameof(CommonData))]
         [MemberData(nameof(DeserializeData))]
         public void JsonConvert_DeserializeObject_ReturnsExpectedValue(string serializedValue, TestClass result)
         {
             var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter());
+
+            result.Should().BeEquivalentTo(deserialized);
+        }
+
+        [Theory]
+        [MemberData(nameof(DeserializeDataStrictEnumOnlyBehavior))]
+        public void JsonConvert_DeserializeObject_ReturnsExpectedValue_StrictEnumOnlyBehavior(string serializedValue, TestClass result)
+        {
+            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly));
 
             result.Should().BeEquivalentTo(deserialized);
         }
@@ -137,12 +182,12 @@ namespace StringTypeEnumConverterTests
             var value = typeCacheProperty?.GetValue(typeHelper) as Dictionary<string, Type>;
 
             Assert.NotNull(value);
-            Assert.Empty(value);
+            Assert.False(value.ContainsValue(typeof(StringEscapeHandling)));
 
-            const string serialized = "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
+            const string serialized = "{\"Enum1\":\"StringEscapeHandling.Default\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
             JsonConvert.DeserializeObject<TestClass>(serialized, new StringTypeEnumConverter());
 
-            Assert.True(value.ContainsValue(typeof(StringComparison)));
+            Assert.True(value.ContainsValue(typeof(StringEscapeHandling)));
 
             JsonConvert.DeserializeObject<TestClass>(serialized, new StringTypeEnumConverter());
             //TODO: Check if value is being read from TypeCache.

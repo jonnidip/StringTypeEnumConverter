@@ -3,16 +3,26 @@ using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 
 namespace Jonnidip
 {
     public class StringTypeEnumConverter : StringEnumConverter
     {
+        private static IEnumerable<Assembly> _assemblies;
+        private static StringTypeEnumConverterBehavior _behavior;
+
         public StringTypeEnumConverter() : this(AppDomain.CurrentDomain.GetAssemblies()) { }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) => Helper.Assemblies = assemblies;
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) : this(assemblies, StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly) { }
+
+        public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior) : this(AppDomain.CurrentDomain.GetAssemblies(), behavior) { }
+
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies, StringTypeEnumConverterBehavior behavior)
+        {
+            _assemblies = assemblies;
+            _behavior = behavior;
+        }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
@@ -22,7 +32,7 @@ namespace Jonnidip
                     return null;
                 case JsonToken.String:
                     {
-                        Helper.GetObjectType(ref reader, ref objectType);
+                        GetObjectType(ref reader, ref objectType);
 
                         return base.ReadJson(reader, objectType, existingValue, serializer);
                     }
@@ -45,7 +55,7 @@ namespace Jonnidip
 
             var objectType = value.GetType();
 
-            Helper.CheckLiteral(objectType, value.ToString());
+            TypeHelper.CheckEnumLiteral(objectType, value.ToString());
 
             var enumType = EnumTypeBuilder.CreateType(objectType.Name,
                                                         objectType.GetEnumUnderlyingType(),
@@ -55,72 +65,65 @@ namespace Jonnidip
 
         public override bool CanConvert(Type objectType)
         {
-            var t = Helper.GetTypeDefinition(objectType);
+            var t = TypeHelper.GetTypeDefinition(objectType);
 
             return t != null && (t.Name == "Enum" || t.IsEnum);
         }
 
-        internal static class Helper
+        private static void GetObjectType(ref JsonReader reader, ref Type objectType)
         {
-            internal static IEnumerable<Assembly> Assemblies;
+            var readerValue = (string)reader.Value;
 
-            internal static void CheckLiteral(Type type, string literalName)
+            var t = TypeHelper.GetTypeDefinition(objectType);
+
+            if (GetTypeValueString(readerValue, out var typeName, out var value))
             {
-                if (!type.IsEnum)
-                    throw new Exception($"Type '{type.Name}' is not an Enum");
-
-                if (!type.GetEnumNames().Contains(literalName))
-                    throw new Exception($"Value '{literalName}' is not part of enum: {type}");
-            }
-
-            internal static void GetObjectType(ref JsonReader reader, ref Type objectType)
-            {
-                var readerValue = (string)reader.Value;
-
-                if (GetTypeValueString(readerValue, out var typeName, out var value))
+                if (t.Name == "Enum")
                 {
-                    var t = GetTypeDefinition(objectType);
-
-                    if (t.Name == "Enum")
-                    {
-                        objectType = TypeHelper.FindType(typeName, Assemblies, true);
-                        CheckLiteral(objectType, value);
-                    }
-                    else
-                        CheckLiteral(t, value);
-
-                    reader = new JsonTextReader(new StringReader($"{{'{typeName}': '{value}'}}"));
-                    while (reader.Read() && reader.TokenType != JsonToken.String)
-                    { }
-
-                    return;
+                    objectType = TypeHelper.FindType(typeName, _assemblies, true);
+                    TypeHelper.CheckEnumLiteral(objectType, value);
                 }
+                else
+                    TypeHelper.CheckEnumLiteral(t, value);
 
-                throw new Exception($"Cannot infer type name from string value '{readerValue}'");
+                reader = new JsonTextReader(new StringReader($"{{'{typeName}': '{value}'}}"));
+                while (reader.Read() && reader.TokenType != JsonToken.String)
+                { }
+
+                return;
             }
-
-            internal static bool GetTypeValueString(string readerValue, out string typeName, out string value)
+            else if (_behavior == StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly)
             {
-                typeName = string.Empty;
-                value = string.Empty;
+                TypeHelper.CheckEnumLiteral(t, readerValue);
 
-                if (!string.IsNullOrWhiteSpace(readerValue)
-                    && readerValue.Contains("."))
-                {
-                    var typeValue = readerValue.Split('.');
-                    typeName = typeValue[0];
-                    value = typeValue[1];
-
-                    return true;
-                }
-
-                return false;
+                return;
             }
 
-            internal static Type GetTypeDefinition(Type objectType)
-                => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Nullable<>)
-                    ? Nullable.GetUnderlyingType(objectType)
-                    : objectType;
+            throw new Exception($"Cannot infer type name from string value '{readerValue}'");
         }
+
+        private static bool GetTypeValueString(string readerValue, out string typeName, out string value)
+        {
+            typeName = string.Empty;
+            value = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(readerValue)
+                && readerValue.Contains("."))
+            {
+                var typeValue = readerValue.Split('.');
+                typeName = typeValue[0];
+                value = typeValue[1];
+
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    public enum StringTypeEnumConverterBehavior
+    {
+        AlwaysUseTypeNameInValue,
+        UseTypeNameInValueForStrictEnumsOnly
     }
 }
