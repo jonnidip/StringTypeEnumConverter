@@ -3,11 +3,12 @@ using Newtonsoft.Json.Converters;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Jonnidip
 {
-    public class StringTypeEnumConverter : StringEnumConverter
+    public class StringTypeEnumConverter : StringEnumConverter, IDisposable
     {
         private static IEnumerable<Assembly> _assemblies;
         private static StringTypeEnumConverterBehavior _behavior;
@@ -54,13 +55,33 @@ namespace Jonnidip
             }
 
             var objectType = value.GetType();
+            bool convertType;
 
-            TypeHelper.CheckEnumLiteral(objectType, value.ToString());
+            switch (_behavior)
+            {
+                case StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue:
+                    convertType = true;
+                    break;
+                case StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly:
+                    var currentDestinationType = GetDestinationType(writer, serializer);
+                    convertType = currentDestinationType.Name == "Enum";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Behavior '{_behavior}' is not implemented.");
+            }
 
-            var enumType = EnumTypeBuilder.CreateType(objectType.Name,
-                                                        objectType.GetEnumUnderlyingType(),
-                                                        $"{objectType.Name}.{value}", value);
-            base.WriteJson(writer, Enum.GetValues(enumType).GetValue(0), serializer);
+            if (convertType)
+            {
+                TypeHelper.CheckEnumLiteral(objectType, value.ToString());
+
+                var enumType = EnumTypeBuilder.CreateType(objectType.Name,
+                    objectType.GetEnumUnderlyingType(),
+                    $"{objectType.Name}.{value}", value);
+
+                value = Enum.GetValues(enumType).GetValue(0);
+            }
+
+            base.WriteJson(writer, value, serializer);
         }
 
         public override bool CanConvert(Type objectType)
@@ -92,7 +113,8 @@ namespace Jonnidip
 
                 return;
             }
-            else if (_behavior == StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly)
+
+            if (_behavior == StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly)
             {
                 TypeHelper.CheckEnumLiteral(t, readerValue);
 
@@ -118,6 +140,37 @@ namespace Jonnidip
             }
 
             return false;
+        }
+
+        public void Dispose()
+        {
+            _assemblies = null;
+        }
+
+        private static Type GetDestinationType(JsonWriter writer, JsonSerializer serializer)
+        {
+            var serializeStack = GetSerializeStack(serializer).First();
+            var properties = serializeStack.GetType().GetProperties();
+
+            var current = writer.Path.Split('.')
+                .Aggregate<string, PropertyInfo>(null, (current1, s) => current1 == null
+                    ? properties.First(f => f.Name == s)
+                    : current1.PropertyType.GetProperties().First(f => f.Name == s));
+
+            return TypeHelper.GetTypeDefinition(current.PropertyType);
+        }
+
+        private static IEnumerable<object> GetSerializeStack(JsonSerializer serializer)
+        {
+            var internalSerializer = serializer.GetType()
+                .GetMethod("GetInternalSerializer", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.Invoke(serializer, null);
+
+            var serializeStack = internalSerializer?.GetType()
+                .GetField("_serializeStack", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.GetValue(internalSerializer) as List<object>;
+
+            return serializeStack;
         }
     }
 

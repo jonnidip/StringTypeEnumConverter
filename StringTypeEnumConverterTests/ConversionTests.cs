@@ -60,6 +60,51 @@ namespace StringTypeEnumConverterTests
                 }
             };
 
+        public static IEnumerable<object[]> SerializeDataStrictEnumOnlyBehavior =>
+            new List<object[]>
+            {
+                new object[]
+                   {
+                       "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"None\",\"SubClass\":null}", new TestClass
+                                                                                                                                     {
+                                                                                                                                         Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                                                         Enum2 = StringSplitOptions.None,
+                                                                                                                                         SubClass = null
+                                                                                                                                     }
+                   },
+                   new object[]
+                   {
+                       "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"None\",\"SubClass\":{\"Enum1\":\"ConsoleModifiers.Alt\",\"Enum2\":\"Black\"}}", new TestClass
+                                                                                                                                                                                                      {
+                                                                                                                                                                                                          Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                                                                                                                          Enum2 = StringSplitOptions.None,
+                                                                                                                                                                                                          SubClass = new TestSubClass
+                                                                                                                                                                                                                     {
+                                                                                                                                                                                                                         Enum1 = ConsoleModifiers.Alt,
+                                                                                                                                                                                                                         Enum2 = ConsoleColor.Black
+                                                                                                                                                                                                                     }
+                                                                                                                                                                                                      }
+                   },
+                   new object[]
+                   {
+                       "{\"Enum1\":null,\"Enum2\":\"None\",\"SubClass\":null}", new TestClass
+                                                                                                   {
+                                                                                                       Enum1 = null,
+                                                                                                       Enum2 = StringSplitOptions.None,
+                                                                                                       SubClass = null
+                                                                                                   }
+                   },
+                new object[]
+                {
+                    "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":null,\"SubClass\":null}", new TestClass
+                                                                                                           {
+                                                                                                               Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                               Enum2 = null,
+                                                                                                               SubClass = null
+                                                                                                           }
+                }
+            };
+
         public static IEnumerable<object[]> DeserializeData
             => new List<object[]>
                {
@@ -111,22 +156,18 @@ namespace StringTypeEnumConverterTests
         [MemberData(nameof(SerializeData))]
         public void JsonConvert_SerializeObject_ReturnsExpectedValue(string expectedValue, TestClass testClass)
         {
-            var serialized = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter());
+            var serialized = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue));
 
             Assert.Equal(expectedValue, serialized);
         }
 
-        [Fact]
-        public void x()
+        [Theory]
+        [MemberData(nameof(SerializeDataStrictEnumOnlyBehavior))]
+        public void JsonConvert_SerializeObject_ReturnsExpectedValue_StrictEnumOnlyBehavior(string expectedValue, TestClass testClass)
         {
-            var testClass = new TestClass
-                            {
-                                Enum1 = StringComparison.OrdinalIgnoreCase,
-                                Enum2 = null,
-                                SubClass = null
-                            };
-
             var serialized = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly));
+
+            Assert.Equal(expectedValue, serialized);
         }
 
         [Theory]
