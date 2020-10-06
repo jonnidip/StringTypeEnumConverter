@@ -10,9 +10,42 @@ namespace Jonnidip
 {
     public class StringTypeEnumConverter : StringEnumConverter
     {
-        public StringTypeEnumConverter() : this(AppDomain.CurrentDomain.GetAssemblies()) { }
+        private static IEnumerable<Assembly> _assemblies;
+        private static IEnumerable<Assembly> Assemblies
+        {
+            get => _assemblies ?? (_assemblies = AppDomain.CurrentDomain.GetAssemblies());
+            set => _assemblies = value;
+        }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) => Helper.Assemblies = assemblies;
+        private static StringTypeEnumConverterBehavior _behavior = StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue;
+        private static Dictionary<string, Type> _knownEnumTypes = new Dictionary<string, Type>();
+
+        public StringTypeEnumConverter()
+            : this((IEnumerable<Assembly>)null) { }
+
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies)
+            : this(assemblies, null, null) { }
+
+        public StringTypeEnumConverter(IEnumerable<Type> knownEnumTypes)
+            : this(null, null, knownEnumTypes) { }
+
+        public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior)
+            : this(null, behavior, null) { }
+
+        public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior, IEnumerable<Type> knownEnumTypes)
+            : this(null, behavior, knownEnumTypes) { }
+
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies, StringTypeEnumConverterBehavior? behavior, IEnumerable<Type> knownEnumTypes)
+        {
+            Assemblies = assemblies;
+
+            if (behavior != null)
+                _behavior = (StringTypeEnumConverterBehavior)behavior;
+
+            if (knownEnumTypes != null)
+                lock (_knownEnumTypes)
+                    _knownEnumTypes = knownEnumTypes.ToDictionary(x => x.Name, x => x);
+        }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
@@ -21,11 +54,8 @@ namespace Jonnidip
                 case JsonToken.Null:
                     return null;
                 case JsonToken.String:
-                    {
-                        Helper.GetObjectType(ref reader, ref objectType);
-
-                        return base.ReadJson(reader, objectType, existingValue, serializer);
-                    }
+                    GetObjectType(ref reader, ref objectType);
+                    break;
                 case JsonToken.Integer:
                     if (objectType.Name == "Enum")
                         throw new Exception($"Value '{reader.Value}' cannot be converted to type: {objectType.Name}.");
@@ -44,83 +74,126 @@ namespace Jonnidip
             }
 
             var objectType = value.GetType();
+            bool convertType;
 
-            Helper.CheckLiteral(objectType, value.ToString());
+            switch (_behavior)
+            {
+                case StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue:
+                    convertType = true;
+                    break;
+                case StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly:
+                    var currentDestinationType = GetDestinationType(writer, serializer);
+                    convertType = currentDestinationType.Name == "Enum";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException($"Behavior '{_behavior}' is not implemented.");
+            }
 
-            var enumType = EnumTypeBuilder.CreateType(objectType.Name,
-                                                        objectType.GetEnumUnderlyingType(),
-                                                        $"{objectType.Name}.{value}", value);
-            base.WriteJson(writer, Enum.GetValues(enumType).GetValue(0), serializer);
+            if (convertType)
+            {
+                TypeHelper.CheckEnumLiteral(objectType, value.ToString());
+
+                var enumType = EnumTypeBuilder.CreateType(objectType.Name,
+                    objectType.GetEnumUnderlyingType(),
+                    $"{objectType.Name}.{value}", value);
+
+                value = Enum.GetValues(enumType).GetValue(0);
+            }
+
+            base.WriteJson(writer, value, serializer);
         }
 
         public override bool CanConvert(Type objectType)
         {
-            var t = Helper.GetTypeDefinition(objectType);
+            var t = TypeHelper.GetTypeDefinition(objectType);
 
             return t != null && (t.Name == "Enum" || t.IsEnum);
         }
 
-        internal static class Helper
+        private static void GetObjectType(ref JsonReader reader, ref Type objectType)
         {
-            internal static IEnumerable<Assembly> Assemblies;
+            var readerValue = (string)reader.Value;
 
-            internal static void CheckLiteral(Type type, string literalName)
+            var t = TypeHelper.GetTypeDefinition(objectType);
+
+            if (GetTypeValueString(readerValue, out var typeName, out var value))
             {
-                if (!type.IsEnum)
-                    throw new Exception($"Type '{type.Name}' is not an Enum");
-
-                if (!type.GetEnumNames().Contains(literalName))
-                    throw new Exception($"Value '{literalName}' is not part of enum: {type}");
-            }
-
-            internal static void GetObjectType(ref JsonReader reader, ref Type objectType)
-            {
-                var readerValue = (string)reader.Value;
-
-                if (GetTypeValueString(readerValue, out var typeName, out var value))
+                if (t.Name == "Enum")
                 {
-                    var t = GetTypeDefinition(objectType);
+                    lock (_knownEnumTypes)
+                        if (!_knownEnumTypes.TryGetValue(typeName, out objectType))
+                            objectType = TypeHelper.FindType(typeName, Assemblies, true);
 
-                    if (t.Name == "Enum")
-                    {
-                        objectType = TypeHelper.FindType(typeName, Assemblies, true);
-                        CheckLiteral(objectType, value);
-                    }
-                    else
-                        CheckLiteral(t, value);
-
-                    reader = new JsonTextReader(new StringReader($"{{'{typeName}': '{value}'}}"));
-                    while (reader.Read() && reader.TokenType != JsonToken.String)
-                    { }
-
-                    return;
+                    TypeHelper.CheckEnumLiteral(objectType, value);
                 }
+                else
+                    TypeHelper.CheckEnumLiteral(t, value);
 
-                throw new Exception($"Cannot infer type name from string value '{readerValue}'");
+                reader = new JsonTextReader(new StringReader($"{{'{typeName}': '{value}'}}"));
+                while (reader.Read() && reader.TokenType != JsonToken.String)
+                { }
+
+                return;
             }
 
-            internal static bool GetTypeValueString(string readerValue, out string typeName, out string value)
+            if (_behavior == StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly)
             {
-                typeName = string.Empty;
-                value = string.Empty;
+                TypeHelper.CheckEnumLiteral(t, readerValue);
 
-                if (!string.IsNullOrWhiteSpace(readerValue)
-                    && readerValue.Contains("."))
-                {
-                    var typeValue = readerValue.Split('.');
-                    typeName = typeValue[0];
-                    value = typeValue[1];
-
-                    return true;
-                }
-
-                return false;
+                return;
             }
 
-            internal static Type GetTypeDefinition(Type objectType)
-                => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Nullable<>)
-                    ? Nullable.GetUnderlyingType(objectType)
-                    : objectType;
+            throw new Exception($"Cannot infer type name from string value '{readerValue}'");
         }
+
+        private static bool GetTypeValueString(string readerValue, out string typeName, out string value)
+        {
+            typeName = string.Empty;
+            value = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(readerValue)
+                && readerValue.Contains("."))
+            {
+                var typeValue = readerValue.Split('.');
+                typeName = typeValue[0];
+                value = typeValue[1];
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Type GetDestinationType(JsonWriter writer, JsonSerializer serializer)
+        {
+            var serializeStack = GetSerializeStack(serializer).First();
+            var properties = serializeStack.GetType().GetProperties();
+
+            var current = writer.Path.Split('.')
+                .Aggregate<string, PropertyInfo>(null, (current1, s) => current1 == null
+                    ? properties.First(f => f.Name == s)
+                    : current1.PropertyType.GetProperties().First(f => f.Name == s));
+
+            return TypeHelper.GetTypeDefinition(current.PropertyType);
+        }
+
+        private static IEnumerable<object> GetSerializeStack(JsonSerializer serializer)
+        {
+            var internalSerializer = serializer.GetType()
+                .GetMethod("GetInternalSerializer", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.Invoke(serializer, null);
+
+            var serializeStack = internalSerializer?.GetType()
+                .GetField("_serializeStack", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.GetValue(internalSerializer) as List<object>;
+
+            return serializeStack;
+        }
+    }
+
+    public enum StringTypeEnumConverterBehavior
+    {
+        AlwaysUseTypeNameInValue,
+        UseTypeNameInValueForStrictEnumsOnly
     }
 }
