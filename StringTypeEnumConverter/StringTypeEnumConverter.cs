@@ -11,18 +11,34 @@ namespace Jonnidip
     public class StringTypeEnumConverter : StringEnumConverter, IDisposable
     {
         private static IEnumerable<Assembly> _assemblies;
-        private static StringTypeEnumConverterBehavior _behavior;
+        private static StringTypeEnumConverterBehavior _behavior = StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue;
+        private static Dictionary<string, Type> _knownEnumTypes = new Dictionary<string, Type>();
 
-        public StringTypeEnumConverter() : this(AppDomain.CurrentDomain.GetAssemblies()) { }
+        public StringTypeEnumConverter()
+            : this(AppDomain.CurrentDomain.GetAssemblies()) { }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies) : this(assemblies, StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue) { }
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies)
+            : this(assemblies, null, null) { }
 
-        public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior) : this(AppDomain.CurrentDomain.GetAssemblies(), behavior) { }
+        public StringTypeEnumConverter(IEnumerable<Type> knownEnumTypes)
+            : this(AppDomain.CurrentDomain.GetAssemblies(), null, knownEnumTypes) { }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies, StringTypeEnumConverterBehavior behavior)
+        public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior)
+            : this(AppDomain.CurrentDomain.GetAssemblies(), behavior, null) { }
+
+        public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior, IEnumerable<Type> knownEnumTypes)
+            : this(AppDomain.CurrentDomain.GetAssemblies(), behavior, knownEnumTypes) { }
+
+        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies, StringTypeEnumConverterBehavior? behavior, IEnumerable<Type> knownEnumTypes)
         {
             _assemblies = assemblies;
-            _behavior = behavior;
+
+            if (behavior != null)
+                _behavior = (StringTypeEnumConverterBehavior)behavior;
+
+            if (knownEnumTypes != null)
+                lock (_knownEnumTypes)
+                    _knownEnumTypes = knownEnumTypes.ToDictionary(x => x.Name, x => x);
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -32,11 +48,8 @@ namespace Jonnidip
                 case JsonToken.Null:
                     return null;
                 case JsonToken.String:
-                    {
-                        GetObjectType(ref reader, ref objectType);
-
-                        return base.ReadJson(reader, objectType, existingValue, serializer);
-                    }
+                    GetObjectType(ref reader, ref objectType);
+                    break;
                 case JsonToken.Integer:
                     if (objectType.Name == "Enum")
                         throw new Exception($"Value '{reader.Value}' cannot be converted to type: {objectType.Name}.");
@@ -101,7 +114,10 @@ namespace Jonnidip
             {
                 if (t.Name == "Enum")
                 {
-                    objectType = TypeHelper.FindType(typeName, _assemblies, true);
+                    lock (_knownEnumTypes)
+                        if (!_knownEnumTypes.TryGetValue(typeName, out objectType))
+                            objectType = TypeHelper.FindType(typeName, _assemblies, true);
+
                     TypeHelper.CheckEnumLiteral(objectType, value);
                 }
                 else

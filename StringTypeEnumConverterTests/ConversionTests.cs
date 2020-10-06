@@ -180,6 +180,22 @@ namespace StringTypeEnumConverterTests
             result.Should().BeEquivalentTo(deserialized);
         }
 
+        [Fact]
+        public void JsonConvert_DeserializeObject_ReturnsExpectedValue_KnownEnumType()
+        {
+            var testClass = new TestClass
+                            {
+                                Enum1 = TestEnum.Value1,
+                                Enum2 = StringSplitOptions.None,
+                                SubClass = null
+                            };
+
+            const string serializedValue = "{\"Enum1\":\"TestEnum.Value1\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
+            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(new List<Type> { typeof(TestEnum) }));
+
+            testClass.Should().BeEquivalentTo(deserialized);
+        }
+
         [Theory]
         [MemberData(nameof(DeserializeDataStrictEnumOnlyBehavior))]
         public void JsonConvert_DeserializeObject_ReturnsExpectedValue_StrictEnumOnlyBehavior(string serializedValue, TestClass result)
@@ -248,6 +264,12 @@ namespace StringTypeEnumConverterTests
             public Enum Enum1 { get; set; }
 
             public ConsoleColor Enum2 { get; set; }
+        }
+
+        public enum TestEnum
+        {
+            Value1,
+            Value2
         }
     }
 }
