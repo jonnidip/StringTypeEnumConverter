@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>StringTypeEnumConverter.Newtonsoft</id>
-    <version>1.1.0-beta</version>
+    <version>1.1.1-beta</version>
     <authors>Giovanni Dipino</authors>
     <owners>Giovanni Dipino</owners>
 	<license type="expression">MIT</license>
