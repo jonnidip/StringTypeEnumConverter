@@ -184,16 +184,57 @@ namespace StringTypeEnumConverterTests
         public void JsonConvert_DeserializeObject_ReturnsExpectedValue_KnownEnumType()
         {
             var testClass = new TestClass
-                            {
-                                Enum1 = TestEnum.Value1,
-                                Enum2 = StringSplitOptions.None,
-                                SubClass = null
-                            };
+            {
+                Enum1 = TestEnum.Value1,
+                Enum2 = StringSplitOptions.None,
+                SubClass = null
+            };
 
             const string serializedValue = "{\"Enum1\":\"TestEnum.Value1\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
             var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(new List<Type> { typeof(TestEnum) }));
 
             testClass.Should().BeEquivalentTo(deserialized);
+        }
+
+        [Fact]
+        public void JsonConvert_DeserializeObject_ReturnsExpectedValue_DifferentBehaviors()
+        {
+            var testClass = new TestClass
+            {
+                Enum1 = TestEnum.Value1,
+                Enum2 = StringSplitOptions.None,
+                SubClass = null
+            };
+
+            const string serializedValue = "{\"Enum1\":\"TestEnum.Value1\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
+            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly, new List<Type> { typeof(TestEnum) }));
+
+            testClass.Should().BeEquivalentTo(deserialized);
+
+            var deserialized2 = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue, new List<Type> { typeof(TestEnum) }));
+
+            testClass.Should().BeEquivalentTo(deserialized2);
+        }
+
+        [Fact]
+        public void JsonConvert_SerializeObject_ReturnsExpectedValue_DifferentBehaviors()
+        {
+            var testClass = new TestClass
+            {
+                Enum1 = TestEnum.Value1,
+                Enum2 = StringSplitOptions.None,
+                SubClass = null
+            };
+
+            const string expectedSerialization1 = "{\"Enum1\":\"TestEnum.Value1\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
+            var serializedValue1 = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue, new List<Type> { typeof(TestEnum) }));
+
+            Assert.Equal(expectedSerialization1, serializedValue1);
+
+            const string expectedSerialization2 = "{\"Enum1\":\"TestEnum.Value1\",\"Enum2\":\"None\",\"SubClass\":null}";
+            var serializedValue2 = JsonConvert.SerializeObject(testClass, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly, new List<Type> { typeof(TestEnum) }));
+
+            Assert.Equal(expectedSerialization2, serializedValue2);
         }
 
         [Theory]
@@ -268,8 +309,7 @@ namespace StringTypeEnumConverterTests
 
         public enum TestEnum
         {
-            Value1,
-            Value2
+            Value1
         }
     }
 }

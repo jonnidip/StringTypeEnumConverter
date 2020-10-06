@@ -8,30 +8,36 @@ using System.Reflection;
 
 namespace Jonnidip
 {
-    public class StringTypeEnumConverter : StringEnumConverter, IDisposable
+    public class StringTypeEnumConverter : StringEnumConverter
     {
         private static IEnumerable<Assembly> _assemblies;
+        private static IEnumerable<Assembly> Assemblies
+        {
+            get => _assemblies ?? (_assemblies = AppDomain.CurrentDomain.GetAssemblies());
+            set => _assemblies = value;
+        }
+
         private static StringTypeEnumConverterBehavior _behavior = StringTypeEnumConverterBehavior.AlwaysUseTypeNameInValue;
         private static Dictionary<string, Type> _knownEnumTypes = new Dictionary<string, Type>();
 
         public StringTypeEnumConverter()
-            : this(AppDomain.CurrentDomain.GetAssemblies()) { }
+            : this((IEnumerable<Assembly>)null) { }
 
         public StringTypeEnumConverter(IEnumerable<Assembly> assemblies)
             : this(assemblies, null, null) { }
 
         public StringTypeEnumConverter(IEnumerable<Type> knownEnumTypes)
-            : this(AppDomain.CurrentDomain.GetAssemblies(), null, knownEnumTypes) { }
+            : this(null, null, knownEnumTypes) { }
 
         public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior)
-            : this(AppDomain.CurrentDomain.GetAssemblies(), behavior, null) { }
+            : this(null, behavior, null) { }
 
         public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior, IEnumerable<Type> knownEnumTypes)
-            : this(AppDomain.CurrentDomain.GetAssemblies(), behavior, knownEnumTypes) { }
+            : this(null, behavior, knownEnumTypes) { }
 
         public StringTypeEnumConverter(IEnumerable<Assembly> assemblies, StringTypeEnumConverterBehavior? behavior, IEnumerable<Type> knownEnumTypes)
         {
-            _assemblies = assemblies;
+            Assemblies = assemblies;
 
             if (behavior != null)
                 _behavior = (StringTypeEnumConverterBehavior)behavior;
@@ -116,7 +122,7 @@ namespace Jonnidip
                 {
                     lock (_knownEnumTypes)
                         if (!_knownEnumTypes.TryGetValue(typeName, out objectType))
-                            objectType = TypeHelper.FindType(typeName, _assemblies, true);
+                            objectType = TypeHelper.FindType(typeName, Assemblies, true);
 
                     TypeHelper.CheckEnumLiteral(objectType, value);
                 }
@@ -156,11 +162,6 @@ namespace Jonnidip
             }
 
             return false;
-        }
-
-        public void Dispose()
-        {
-            _assemblies = null;
         }
 
         private static Type GetDestinationType(JsonWriter writer, JsonSerializer serializer)
