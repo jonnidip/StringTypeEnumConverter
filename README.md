@@ -27,7 +27,7 @@ The class we are extending only writes the *string* value of the enum:
 ```<language>
         {"Enum1":"OrdinalIgnoreCase"}
 ```
-**StringTypeEnumConverter** writes the string value along with the originating enum type name, in this way:
+**StringTypeEnumConverter** extends this concept, writing the string value along with the originating enum type name, in this way:
 ```<language>
         {"Enum1":"StringComparison.OrdinalIgnoreCase"}
 ```
