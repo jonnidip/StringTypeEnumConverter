@@ -1,7 +1,7 @@
 # StringTypeEnumConverter
 A more precise enum converter for Newtonsoft json.
 
-When serializing and deserializing an Enum using Newtonsoft.Json, you may get the problem of knowing what was the specifi enum type.<br>
+When serializing and deserializing an Enum using Newtonsoft.Json, you may get the problem of knowing what was the specific enum type.<br>
 This may happen if your class declares a property of type Enum, instead of the specific enum.
 <br>
 <br>
