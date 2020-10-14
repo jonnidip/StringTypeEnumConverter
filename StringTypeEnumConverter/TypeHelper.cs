@@ -63,7 +63,6 @@ namespace Jonnidip
                 throw new Exception($"Type '{type.Name}' is not an Enum");
 
             if (!Enum.IsDefined(type, literalName))
-                //if (!type.GetEnumNames().Contains(literalName))
                 throw new Exception($"Value '{literalName}' is not part of enum: {type}");
         }
     }
