@@ -9,16 +9,20 @@ namespace Jonnidip
     {
         private static readonly Dictionary<string, Type> TypeCache = new Dictionary<string, Type>();
 
-        public static Type FindType(string typeName, IEnumerable<Assembly> assemblies, bool searchInReferencedAssemblies = false)
+        internal static Type FindType(string typeName, IEnumerable<Assembly> assemblies, bool searchInReferencedAssemblies = false)
         {
-            if (TypeCache.ContainsKey(typeName))
-                return TypeCache[typeName];
-
             var previouslyListed = new List<string>();
 
             foreach (var assembly in assemblies)
             {
-                var type = FindType(typeName, assembly);
+                var cacheKey = $"{assembly.FullName}.{typeName}";
+                if (FindTypeInCache(cacheKey, out var foundType))
+                    return foundType;
+            }
+
+            foreach (var assembly in assemblies)
+            {
+                var type = FindType(typeName, assembly, false);
                 if (type != null)
                     return type;
 
@@ -28,7 +32,7 @@ namespace Jonnidip
                     foreach (var referencedAssembly in assembly.GetReferencedAssemblies()
                         .Where(w => !previouslyListed.Contains(w.FullName)))
                     {
-                        type = FindType(typeName, Assembly.Load(referencedAssembly));
+                        type = FindType(typeName, Assembly.Load(referencedAssembly), false);
                         if (type != null)
                             return type;
 
@@ -39,28 +43,48 @@ namespace Jonnidip
             throw new Exception($"Cannot find type '{typeName}'");
         }
 
-        public static Type FindType(string typeName, Assembly assembly)
+        internal static Type FindType(string typeName, Assembly assembly, bool checkCache = true)
         {
             var cacheKey = $"{assembly.FullName}.{typeName}";
-            if (TypeCache.ContainsKey(cacheKey))
-                return TypeCache[cacheKey];
+
+            if (checkCache && FindTypeInCache(cacheKey, out var foundType))
+                    return foundType;
 
             var type = assembly.GetTypes().FirstOrDefault(f => f.Name == typeName);
 
-            TypeCache.Add(cacheKey, type);
+            if (type != null)
+                lock (TypeCache)
+                    TypeCache.Add(cacheKey, type);
 
             return type;
         }
 
-        public static Type GetTypeDefinition(Type objectType)
+        private static bool FindTypeInCache(string cacheKey, out Type foundType)
+        {
+            foundType = null;
+
+            lock (TypeCache)
+                if (TypeCache.ContainsKey(cacheKey))
+                    foundType = TypeCache[cacheKey];
+
+            return foundType != null;
+        }
+
+        internal static Type GetTypeDefinition(Type objectType)
             => objectType.IsGenericType && objectType.GetGenericTypeDefinition() == typeof(Nullable<>)
                 ? Nullable.GetUnderlyingType(objectType)
                 : objectType;
 
-        public static void CheckEnumLiteral(Type type, string literalName)
+        internal static void CheckEnumLiteral(Type type, string? literalName)
         {
+            if (type.Name == "Enum")
+                return;
+
             if (!type.IsEnum)
                 throw new Exception($"Type '{type.Name}' is not an Enum");
+
+            if (literalName == null)
+                throw new Exception($"Literal cannot be null for enum: {type}");
 
             if (!Enum.IsDefined(type, literalName))
                 throw new Exception($"Value '{literalName}' is not part of enum: {type}");

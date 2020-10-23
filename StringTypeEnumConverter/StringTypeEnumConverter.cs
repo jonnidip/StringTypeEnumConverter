@@ -5,15 +5,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+#pragma warning disable 1591
 
 namespace Jonnidip
 {
     public class StringTypeEnumConverter : StringEnumConverter
     {
-        private static IEnumerable<Assembly> _assemblies;
+        private static IEnumerable<Assembly>? _assemblies;
         private static IEnumerable<Assembly> Assemblies
         {
-            get => _assemblies ?? (_assemblies = AppDomain.CurrentDomain.GetAssemblies());
+            get => _assemblies ??= AppDomain.CurrentDomain.GetAssemblies();
             set => _assemblies = value;
         }
 
@@ -21,9 +22,9 @@ namespace Jonnidip
         private static Dictionary<string, Type> _knownEnumTypes = new Dictionary<string, Type>();
 
         public StringTypeEnumConverter()
-            : this((IEnumerable<Assembly>)null) { }
+            : this(null as IEnumerable<Assembly>) { }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies)
+        public StringTypeEnumConverter(IEnumerable<Assembly>? assemblies)
             : this(assemblies, null, null) { }
 
         public StringTypeEnumConverter(IEnumerable<Type> knownEnumTypes)
@@ -35,7 +36,7 @@ namespace Jonnidip
         public StringTypeEnumConverter(StringTypeEnumConverterBehavior behavior, IEnumerable<Type> knownEnumTypes)
             : this(null, behavior, knownEnumTypes) { }
 
-        public StringTypeEnumConverter(IEnumerable<Assembly> assemblies, StringTypeEnumConverterBehavior? behavior, IEnumerable<Type> knownEnumTypes)
+        public StringTypeEnumConverter(IEnumerable<Assembly>? assemblies, StringTypeEnumConverterBehavior? behavior, IEnumerable<Type>? knownEnumTypes)
         {
             Assemblies = assemblies;
 
@@ -47,7 +48,7 @@ namespace Jonnidip
                     _knownEnumTypes = knownEnumTypes.ToDictionary(x => x.Name, x => x);
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             switch (reader.TokenType)
             {
@@ -65,7 +66,7 @@ namespace Jonnidip
             return base.ReadJson(reader, objectType, existingValue, serializer);
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             if (value == null)
             {
@@ -74,7 +75,7 @@ namespace Jonnidip
             }
 
             var objectType = value.GetType();
-            bool convertType;
+            var convertType = false;
 
             switch (_behavior)
             {
@@ -82,11 +83,8 @@ namespace Jonnidip
                     convertType = true;
                     break;
                 case StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly:
-                    var currentDestinationType = GetDestinationType(writer, serializer);
-                    convertType = currentDestinationType.Name == "Enum";
+                    convertType = GetDestinationType(writer, serializer).Name == "Enum";
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException($"Behavior '{_behavior}' is not implemented.");
             }
 
             if (convertType)
@@ -136,10 +134,9 @@ namespace Jonnidip
                 return;
             }
 
-            if (_behavior == StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly)
+            if (t.Name != "Enum" && _behavior == StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly)
             {
                 TypeHelper.CheckEnumLiteral(t, readerValue);
-
                 return;
             }
 

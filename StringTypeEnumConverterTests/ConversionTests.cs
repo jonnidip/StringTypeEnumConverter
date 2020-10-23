@@ -66,43 +66,43 @@ namespace StringTypeEnumConverterTests
                 new object[]
                    {
                        "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"None\",\"SubClass\":null}", new TestClass
-                                                                                                                                     {
-                                                                                                                                         Enum1 = StringComparison.OrdinalIgnoreCase,
-                                                                                                                                         Enum2 = StringSplitOptions.None,
-                                                                                                                                         SubClass = null
-                                                                                                                                     }
+                                                                                                                         {
+                                                                                                                             Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                                             Enum2 = StringSplitOptions.None,
+                                                                                                                             SubClass = null
+                                                                                                                         }
                    },
                    new object[]
                    {
                        "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":\"None\",\"SubClass\":{\"Enum1\":\"ConsoleModifiers.Alt\",\"Enum2\":\"Black\"}}", new TestClass
-                                                                                                                                                                                                      {
-                                                                                                                                                                                                          Enum1 = StringComparison.OrdinalIgnoreCase,
-                                                                                                                                                                                                          Enum2 = StringSplitOptions.None,
-                                                                                                                                                                                                          SubClass = new TestSubClass
-                                                                                                                                                                                                                     {
-                                                                                                                                                                                                                         Enum1 = ConsoleModifiers.Alt,
-                                                                                                                                                                                                                         Enum2 = ConsoleColor.Black
-                                                                                                                                                                                                                     }
-                                                                                                                                                                                                      }
+                                                                                                                                                                          {
+                                                                                                                                                                              Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                                                                                              Enum2 = StringSplitOptions.None,
+                                                                                                                                                                              SubClass = new TestSubClass
+                                                                                                                                                                                         {
+                                                                                                                                                                                             Enum1 = ConsoleModifiers.Alt,
+                                                                                                                                                                                             Enum2 = ConsoleColor.Black
+                                                                                                                                                                                         }
+                                                                                                                                                                          }
                    },
                    new object[]
                    {
                        "{\"Enum1\":null,\"Enum2\":\"None\",\"SubClass\":null}", new TestClass
-                                                                                                   {
-                                                                                                       Enum1 = null,
-                                                                                                       Enum2 = StringSplitOptions.None,
-                                                                                                       SubClass = null
-                                                                                                   }
+                                                                                       {
+                                                                                           Enum1 = null,
+                                                                                           Enum2 = StringSplitOptions.None,
+                                                                                           SubClass = null
+                                                                                       }
                    },
-                new object[]
-                {
-                    "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":null,\"SubClass\":null}", new TestClass
-                                                                                                           {
-                                                                                                               Enum1 = StringComparison.OrdinalIgnoreCase,
-                                                                                                               Enum2 = null,
-                                                                                                               SubClass = null
-                                                                                                           }
-                }
+                   new object[]
+                   {
+                       "{\"Enum1\":\"StringComparison.OrdinalIgnoreCase\",\"Enum2\":null,\"SubClass\":null}", new TestClass
+                                                                                                              {
+                                                                                                                  Enum1 = StringComparison.OrdinalIgnoreCase,
+                                                                                                                  Enum2 = null,
+                                                                                                                  SubClass = null
+                                                                                                              }
+                   }
             };
 
         public static IEnumerable<object[]> DeserializeData
@@ -125,6 +125,15 @@ namespace StringTypeEnumConverterTests
                                                                                                                Enum2 = StringSplitOptions.None,
                                                                                                                SubClass = null
                                                                                                            }
+                   },
+                   new object[]
+                   {
+                       "{\"Enum1\":null,\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}", new TestClass
+                                                                                                 {
+                                                                                                     Enum1 = null,
+                                                                                                     Enum2 = StringSplitOptions.None,
+                                                                                                     SubClass = null
+                                                                                                 }
                    }
                };
 
@@ -176,6 +185,15 @@ namespace StringTypeEnumConverterTests
         public void JsonConvert_DeserializeObject_ReturnsExpectedValue(string serializedValue, TestClass result)
         {
             var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter());
+
+            result.Should().BeEquivalentTo(deserialized);
+        }
+
+        [Theory]
+        [MemberData(nameof(DeserializeDataStrictEnumOnlyBehavior))]
+        public void JsonConvert_DeserializeObject_ReturnsExpectedValue_StrictEnumOnlyBehavior(string serializedValue, TestClass result)
+        {
+            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly));
 
             result.Should().BeEquivalentTo(deserialized);
         }
@@ -236,16 +254,7 @@ namespace StringTypeEnumConverterTests
 
             Assert.Equal(expectedSerialization2, serializedValue2);
         }
-
-        [Theory]
-        [MemberData(nameof(DeserializeDataStrictEnumOnlyBehavior))]
-        public void JsonConvert_DeserializeObject_ReturnsExpectedValue_StrictEnumOnlyBehavior(string serializedValue, TestClass result)
-        {
-            var deserialized = JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter(StringTypeEnumConverterBehavior.UseTypeNameInValueForStrictEnumsOnly));
-
-            result.Should().BeEquivalentTo(deserialized);
-        }
-
+        
         [Fact]
         public void JsonConvert_DeserializeObject_ThrowsException_If_NumericValue_CannotBeConverted()
         {
@@ -270,6 +279,14 @@ namespace StringTypeEnumConverterTests
             const string serializedValue = "{\"Enum1\":\"NonExisting.Value\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
             var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter()));
             Assert.Equal("Cannot find type 'NonExisting'", exception.Message);
+        }
+
+        [Fact]
+        public void JsonConvert_DeserializeObject_ThrowsException_If_TypeCannotBeInferred()
+        {
+            const string serializedValue = "{\"Enum1\":\"NonExisting\",\"Enum2\":\"StringSplitOptions.None\",\"SubClass\":null}";
+            var exception = Assert.Throws<Exception>(() => JsonConvert.DeserializeObject<TestClass>(serializedValue, new StringTypeEnumConverter()));
+            Assert.Equal("Cannot infer type name from string value 'NonExisting'", exception.Message);
         }
 
         [Fact]

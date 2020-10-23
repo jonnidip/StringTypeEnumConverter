@@ -3,9 +3,8 @@
     <TargetFrameworks Condition="'$(LibraryFrameworks)'==''">net48;net472;net471;net47;net462;net461;net46;net45;netstandard2.1;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
     <TargetFrameworks Condition="'$(LibraryFrameworks)'!=''">$(LibraryFrameworks)</TargetFrameworks>
     <LangVersion>8.0</LangVersion>
-    <AssemblyVersion>1.1.2.1</AssemblyVersion>
-    <FileVersion>1.1.2.1</FileVersion>
-    <VersionPrefix>0.0.0</VersionPrefix>
+    <AssemblyVersion>1.1.2.2</AssemblyVersion>
+    <FileVersion>1.1.2.2</FileVersion>
     <VersionSuffix></VersionSuffix>
     <Authors>Giovanni Dipino</Authors>
     <Company>Jonnidip</Company>
@@ -23,11 +22,11 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl> 
     <RootNamespace>Jonnidip</RootNamespace>
-    <AssemblyName>Jonnidip</AssemblyName>
+    <AssemblyName>StringTypeEnumConverter</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Nullable>enable</Nullable>
     <IncludeSymbols>false</IncludeSymbols>
-    <Version>1.1.2.1</Version>
+    <Version>1.1.2.2</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>

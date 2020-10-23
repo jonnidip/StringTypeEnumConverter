@@ -5,7 +5,7 @@ using System.Reflection.Emit;
 
 namespace Jonnidip
 {
-    public static class EnumTypeBuilder
+    internal static class EnumTypeBuilder
     {
         private const TypeAttributes EnumTypeAttributes = TypeAttributes.Public | TypeAttributes.AutoLayout | TypeAttributes.AnsiClass | TypeAttributes.Sealed;
         private const FieldAttributes ValueFieldAttributes = FieldAttributes.Public | FieldAttributes.SpecialName | FieldAttributes.RTSpecialName;
