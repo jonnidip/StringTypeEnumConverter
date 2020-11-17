@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks Condition="'$(LibraryFrameworks)'==''">net48;net472;net471;net47;net462;net461;net46;net45;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks Condition="'$(LibraryFrameworks)'==''">net48;net472;net471;net47;net462;net461;net46;net45;netcoreapp3.0;netcoreapp3.1;net5.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(LibraryFrameworks)'!=''">$(LibraryFrameworks)</TargetFrameworks>
     <LangVersion>8.0</LangVersion>
     <AssemblyVersion>1.1.2.2</AssemblyVersion>
